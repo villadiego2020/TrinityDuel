@@ -8,7 +8,6 @@ import bgImage from '../../assets/Background.png';
 import sfxWin from "../../assets/sounds/sfx_win.mp3";
 import sfxLose from "../../assets/sounds/sfx_lose.mp3";
 import sfxDraw from "../../assets/sounds/sfx_draw.mp3";
-import sfxPopup from "../../assets/sounds/sfx_round_end.mp3";
 
 export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0.5 }) {
   const [botDeck, setBotDeck] = useState([]);
@@ -102,7 +101,6 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
       nextTurnText = "BOTH UNITS PREPARING...";
     }
 
-    // หน่วงเวลาโชว์การ์ดปะทะและหายไป
     setTimeout(() => {
         setIsFighting(false);
         setPIdx(nextPIdx);
@@ -116,14 +114,14 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
         } else {
             setTimeout(() => handleGameEnd(nextPIdx, nextBIdx), 1000);
         }
-    }, 2200); // เวลารวมสำหรับการโชว์ผลและการสลายตัว
+    }, 2200);
   };
 
   return (
     <div className="fixed inset-0 w-full h-[100dvh] flex flex-col items-center justify-start overflow-hidden text-white bg-slate-950 font-sans">
       <div className="absolute inset-0 z-[-1] bg-cover bg-center scale-110 blur-sm opacity-50" style={{ backgroundImage: `url(${bgImage})` }} />
       
-      {/* 📊 TOP HUD: Score Progress Bar */}
+      {/* 📊 TOP HUD */}
       <div className="absolute top-0 left-0 w-full pt-4 px-6 z-40 flex flex-col items-center pointer-events-none">
         <div className="w-full max-w-2xl flex items-center gap-4">
           <div className="flex flex-col items-end flex-1">
@@ -145,16 +143,16 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
       {/* 🏟️ ARENA LAYOUT */}
       <div className="relative z-10 w-full h-full p-2 flex flex-col md:grid md:grid-cols-3 items-center justify-around md:justify-between gap-2 pt-20 md:pt-24 pb-4">
         
-        {/* BOT SIDE */}
+        {/* BOT SIDE - แสดงหลังการ์ดตอน Standby */}
         <div className="flex flex-col items-center order-1 md:order-none scale-[0.8] md:scale-100 origin-top shrink-0">
           <h2 className="text-sm md:text-2xl font-black text-red-500 mb-2 uppercase italic tracking-tighter">Cyber Bot</h2>
           <div className="relative w-20 md:w-36 aspect-[3/5] bg-red-500/10 border-2 border-red-500/30 rounded-2xl p-1">
-            <Card type={botDeck[bIdx]?.id || 'BACK'} isFlipped={!isFighting && !lastResult} />
+            <Card type={botDeck[bIdx]?.id || 'BACK'} isFlipped={true} />
             <div className="absolute -bottom-2 -right-2 bg-red-600 w-8 h-8 rounded-full border-2 border-white/20 flex items-center justify-center font-black text-xs shadow-xl">{botDeck.length - bIdx}</div>
           </div>
         </div>
 
-        {/* BATTLE CENTER (Clash & Exit Animation) */}
+        {/* BATTLE CENTER */}
         <div className="relative flex flex-col items-center justify-center order-2 md:order-none w-full h-28 md:h-full z-20">
           <div className="absolute top-0 md:top-1/4 text-center w-full px-2 z-10">
             <h3 className={`text-xs md:text-2xl font-black italic mb-1 animate-pulse uppercase tracking-tight
@@ -170,7 +168,7 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50 overflow-visible">
                 <div className="relative w-full h-full flex items-center justify-center">
                   
-                  {/* Player Card Animation */}
+                  {/* Player Card Animation - หงายหน้าตอน Clash */}
                   <motion.div 
                     initial={{ x: isMobile ? 0 : 300, y: isMobile ? 300 : 0, opacity: 0, scale: 0.5 }}
                     animate={{ 
@@ -191,10 +189,10 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
                     transition={{ duration: 0.4, type: "spring", damping: 15 }}
                     className="absolute w-24 md:w-40 aspect-[3/5] border-2 md:border-4 border-cyan-400 rounded-2xl bg-slate-900 shadow-2xl overflow-hidden"
                   >
-                    <Card type={playerDeck[pIdx]?.id} />
+                    <Card type={playerDeck[pIdx]?.id} isFlipped={false} />
                   </motion.div>
 
-                  {/* Bot Card Animation */}
+                  {/* Bot Card Animation - หงายหน้าตอน Clash */}
                   <motion.div 
                     initial={{ x: isMobile ? 0 : -300, y: isMobile ? -300 : 0, opacity: 0, scale: 0.5 }}
                     animate={{ 
@@ -215,7 +213,7 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
                     transition={{ duration: 0.4, type: "spring", damping: 15 }}
                     className="absolute w-24 md:w-40 aspect-[3/5] border-2 md:border-4 border-red-500 rounded-2xl bg-slate-900 shadow-2xl overflow-hidden"
                   >
-                    <Card type={botDeck[bIdx]?.id} />
+                    <Card type={botDeck[bIdx]?.id} isFlipped={false} />
                   </motion.div>
                 </div>
               </div>
@@ -223,10 +221,10 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
           </AnimatePresence>
         </div>
 
-        {/* PLAYER SIDE */}
+        {/* PLAYER SIDE - แสดงหลังการ์ดตอน Standby */}
         <div className="flex flex-col items-center order-3 md:order-none scale-[0.8] md:scale-100 origin-bottom shrink-0">
           <div className="relative w-20 md:w-36 aspect-[3/5] bg-cyan-500/10 border-2 border-cyan-400/30 rounded-2xl p-1">
-            <Card type={playerDeck[pIdx]?.id} />
+            <Card type={playerDeck[pIdx]?.id} isFlipped={true} />
             <div className="absolute -top-2 -left-2 bg-cyan-600 w-8 h-8 rounded-full border-2 border-white/20 flex items-center justify-center font-black text-xs shadow-xl">{playerDeck.length - pIdx}</div>
           </div>
           <h2 className="text-sm md:text-2xl font-black text-cyan-400 mt-2 uppercase italic tracking-tighter">You Pilot</h2>
