@@ -1,22 +1,37 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: #020617;
+    color: white;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  #root {
+    width: 100%;
+    height: 100%;
+  }
 }
 
-body {
-  background: #020617;
-  color: white;
-  overflow: hidden;
-  width: 100vw;
-  height: 100vh;
-}
-
-#root {
+.scanlines {
+  position: fixed;
+  inset: 0;
   width: 100%;
   height: 100%;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.2) 50%
+  );
+  background-size: 100% 4px;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.1;
 }
