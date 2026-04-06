@@ -4,8 +4,10 @@ import Card from '../components/Game/Card';
 import BattleArena from '../components/Game/BattleArena';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Import ภาพพื้นหลัง
+// Assets
 import bgImage from '../assets/Background.png';
+import sfxDeploy from '../assets/sounds/sfx_deploy.mp3';
+import sfxClick from '../assets/sounds/sfx_click.mp3';
 
 export default function GamePage({ onFinishSetup }) {
   const [hand, setHand] = useState([]); 
@@ -13,40 +15,67 @@ export default function GamePage({ onFinishSetup }) {
   const [isBattleMode, setIsBattleMode] = useState(false);
 
   useEffect(() => {
-    setOrderedDeck([]); // ล้างการ์ดที่เคยเลือกไว้
-    setHand(generateDeck()); // จั่วการ์ดชุดใหม่
-    setIsBattleMode(false); // ปิดโหมดต่อสู้ กลับมาโหมดเลือกการ์ด
-  }, [/* ปล่อยว่างไว้เพื่อให้ทำงานทุกครั้งที่หน้า GAME โหลด */]);
+    setOrderedDeck([]); 
+    setHand(generateDeck()); 
+    setIsBattleMode(false); 
+  }, []);
+
+  // --- Helper สำหรับเล่นเสียง ---
+  const playDeploySfx = () => {
+    const audio = new Audio(sfxDeploy);
+    audio.volume = 0.5;
+    audio.play().catch(e => console.log("Audio blocked"));
+  };
+
+  const playClickSfx = () => {
+    const audio = new Audio(sfxClick);
+    audio.volume = 0.4;
+    audio.play().catch(e => console.log("Audio blocked"));
+  };
 
   const selectCard = (card) => {
     if (orderedDeck.length >= 10) return;
-    setOrderedDeck([...orderedDeck, card]);
+    
+    // เล่นเสียงทุกครั้งที่วางการ์ดลง Queue
+    playDeploySfx();
+
+    const newDeck = [...orderedDeck, card];
+    setOrderedDeck(newDeck);
     setHand(hand.filter(c => c.instanceId !== card.instanceId));
+
+    // จังหวะสะใจ: ถ้าเลือกครบ 10 ใบ ให้เล่นเสียงซ้ำอีกทีเพื่อยืนยัน
+    if (newDeck.length === 10) {
+      setTimeout(() => {
+        playDeploySfx();
+      }, 150);
+    }
   };
 
   const undoCard = (card) => {
+    playClickSfx(); // เสียงยกเลิกการเลือก
     setHand([...hand, card]);
     setOrderedDeck(orderedDeck.filter(c => c.instanceId !== card.instanceId));
   };
 
   if (isBattleMode) {
-    return <BattleArena playerDeck={orderedDeck} onFinishGame={onFinishSetup} />;
+    return <BattleArena playerDeck={orderedDeck} onFinishGame={onFinishGameLocal} />;
   }
 
-  // เช็คว่าเลือกการ์ดครบหรือยัง
+  // Wrapper สำหรับปุ่มเริ่มสู้ (เพื่อใส่เสียง)
+  function onFinishGameLocal(winner) {
+    onFinishSetup(winner);
+  }
+
   const isDeckFull = orderedDeck.length === 10;
 
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col items-center justify-between p-8 overflow-hidden font-sans text-white z-0">
       
-      {/* Background Section */}
-      <div 
-        className="absolute inset-0 z-[-1] bg-cover bg-center bg-no-repeat blur-sm scale-110"
-        style={{ backgroundImage: `url(${bgImage})` }}
-      />
+      <div className="absolute inset-0 z-[-1] bg-cover bg-center bg-no-repeat blur-sm scale-110"
+           style={{ backgroundImage: `url(${bgImage})` }} />
       <div className="absolute inset-0 z-[-1] bg-black/50" />
       
-      {/* 1. TOP: Deployment Slots - ปรับเป็น mt-40 ขยับลงมาให้จุกๆ */}
+      {/* 1. TOP: Deployment Slots */}
       <div className="w-full flex flex-col items-center mt-40 z-10 relative">
         <div className="w-full max-w-5xl flex justify-between items-end mb-4 px-4">
           <div className="flex flex-col">
@@ -56,7 +85,7 @@ export default function GamePage({ onFinishSetup }) {
           
           <div className="flex flex-col items-end">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Queue Status</span>
-            <span className="text-sm font-mono text-yellow-500 bg-yellow-500/10 px-4 py-1 rounded-lg border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
+            <span className="text-sm font-mono text-yellow-500 bg-yellow-500/10 px-4 py-1 rounded-lg border border-yellow-500/20">
               {orderedDeck.length} / 10
             </span>
           </div>
@@ -70,11 +99,7 @@ export default function GamePage({ onFinishSetup }) {
                   ${orderedDeck[i] ? 'border-transparent shadow-[0_0_25px_rgba(34,211,238,0.2)] scale-105' : 'border-slate-800 bg-black/40'}
                 `}>
                   {orderedDeck[i] ? (
-                    <Card 
-                      type={orderedDeck[i].id} 
-                      onClick={() => undoCard(orderedDeck[i])} 
-                      showDown={true} 
-                    />
+                    <Card type={orderedDeck[i].id} onClick={() => undoCard(orderedDeck[i])} showDown={true} />
                   ) : (
                     <span className="text-xs text-slate-800 font-black italic">{i + 1}</span>
                   )}
@@ -89,7 +114,10 @@ export default function GamePage({ onFinishSetup }) {
       <div className="flex-1 flex flex-col items-center justify-center z-10 relative w-full">
          <button 
           disabled={!isDeckFull}
-          onClick={() => setIsBattleMode(true)}
+          onClick={() => {
+            playDeploySfx(); // เสียงกดเริ่ม
+            setIsBattleMode(true);
+          }}
           className={`
             px-24 py-5 rounded-full text-2xl font-black uppercase italic transition-all duration-700 border-2
             ${isDeckFull 
