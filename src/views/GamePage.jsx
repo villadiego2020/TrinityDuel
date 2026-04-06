@@ -13,8 +13,10 @@ export default function GamePage({ onFinishSetup }) {
   const [isBattleMode, setIsBattleMode] = useState(false);
 
   useEffect(() => {
-    setHand(generateDeck());
-  }, []);
+    setOrderedDeck([]); // ล้างการ์ดที่เคยเลือกไว้
+    setHand(generateDeck()); // จั่วการ์ดชุดใหม่
+    setIsBattleMode(false); // ปิดโหมดต่อสู้ กลับมาโหมดเลือกการ์ด
+  }, [/* ปล่อยว่างไว้เพื่อให้ทำงานทุกครั้งที่หน้า GAME โหลด */]);
 
   const selectCard = (card) => {
     if (orderedDeck.length >= 10) return;
@@ -44,26 +46,37 @@ export default function GamePage({ onFinishSetup }) {
       />
       <div className="absolute inset-0 z-[-1] bg-black/50" />
       
-      {/* 1. TOP: Deployment Slots */}
-      <div className="w-full flex flex-col items-center mt-12 z-10 relative">
-        <div className="w-full max-w-4xl flex justify-between items-center mb-3 px-2">
-          <h2 className="text-lg font-black italic text-cyan-400 uppercase tracking-[0.2em]">Unit Queue</h2>
-          <span className="text-sm font-mono text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded border border-yellow-500/20">
-            {orderedDeck.length} / 10
-          </span>
+      {/* 1. TOP: Deployment Slots - ปรับเป็น mt-40 ขยับลงมาให้จุกๆ */}
+      <div className="w-full flex flex-col items-center mt-40 z-10 relative">
+        <div className="w-full max-w-5xl flex justify-between items-end mb-4 px-4">
+          <div className="flex flex-col">
+            <h2 className="text-xl font-black italic text-cyan-400 uppercase tracking-[0.2em]">Unit Queue</h2>
+            <div className="h-1 w-16 bg-cyan-500/50 rounded-full mt-1"></div>
+          </div>
+          
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Queue Status</span>
+            <span className="text-sm font-mono text-yellow-500 bg-yellow-500/10 px-4 py-1 rounded-lg border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
+              {orderedDeck.length} / 10
+            </span>
+          </div>
         </div>
         
-        <div className="w-full max-w-4xl bg-slate-950/60 p-6 rounded-2xl border border-white/5 backdrop-blur-md shadow-inner flex justify-center">
-          <div className="flex flex-row justify-center items-center gap-2">
+        <div className="w-full max-w-5xl bg-slate-950/70 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-md shadow-2xl flex justify-center">
+          <div className="flex flex-row justify-center items-center gap-3">
             {Array.from({ length: 10 }).map((_, i) => (
               <div key={i} className="flex-shrink-0">
-                <div className={`w-[65px] h-[110px] md:w-[75px] md:h-[125px] rounded-xl border-2 border-dashed flex items-center justify-center transition-all duration-300
-                  ${orderedDeck[i] ? 'border-transparent shadow-lg shadow-cyan-500/20 scale-105' : 'border-slate-800 bg-black/40'}
+                <div className={`w-[70px] h-[115px] md:w-[85px] md:h-[135px] rounded-2xl border-2 border-dashed flex items-center justify-center transition-all duration-500
+                  ${orderedDeck[i] ? 'border-transparent shadow-[0_0_25px_rgba(34,211,238,0.2)] scale-105' : 'border-slate-800 bg-black/40'}
                 `}>
                   {orderedDeck[i] ? (
-                    <Card type={orderedDeck[i].id} onClick={() => undoCard(orderedDeck[i])} />
+                    <Card 
+                      type={orderedDeck[i].id} 
+                      onClick={() => undoCard(orderedDeck[i])} 
+                      showDown={true} 
+                    />
                   ) : (
-                    <span className="text-xs text-slate-700 font-black italic opacity-50">{i + 1}</span>
+                    <span className="text-xs text-slate-800 font-black italic">{i + 1}</span>
                   )}
                 </div>
               </div>
@@ -72,34 +85,29 @@ export default function GamePage({ onFinishSetup }) {
         </div>
       </div>
 
-      {/* 2. Middle Area: Fixed Engage Button (ไม่ต้องลอยแล้ว) */}
-      <div className="flex-1 flex flex-col items-center justify-center z-10 relative w-full gap-4">
-         {/* เส้นตกแต่ง */}
-         <div className="h-[1px] w-32 bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
-         
+      {/* 2. Middle Area: Fixed Engage Button */}
+      <div className="flex-1 flex flex-col items-center justify-center z-10 relative w-full">
          <button 
           disabled={!isDeckFull}
           onClick={() => setIsBattleMode(true)}
           className={`
-            px-20 py-4 rounded-full text-xl font-black uppercase italic transition-all duration-500 border-2
+            px-24 py-5 rounded-full text-2xl font-black uppercase italic transition-all duration-700 border-2
             ${isDeckFull 
-              ? 'bg-cyan-600 border-cyan-400 text-white shadow-[0_0_40px_rgba(8,145,178,0.6)] cursor-pointer hover:bg-cyan-500 hover:scale-105 active:scale-95' 
-              : 'bg-slate-900/80 border-slate-700 text-slate-600 cursor-not-allowed opacity-50 grayscale'
+              ? 'bg-cyan-600 border-cyan-400 text-white shadow-[0_0_50px_rgba(8,145,178,0.5)] cursor-pointer hover:bg-cyan-400 hover:scale-110 active:scale-95' 
+              : 'bg-slate-950/80 border-slate-800 text-slate-700 cursor-not-allowed opacity-50'
             }
           `}
         >
-          {isDeckFull ? 'Engage Duel' : 'Fill Queue to Battle'}
+          {isDeckFull ? 'INITIATE DUEL' : 'WAITING FOR LOADOUT...'}
         </button>
-
-        <div className="h-[1px] w-32 bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
       </div>
 
       {/* 3. Tactical Hand */}
-      <div className="w-full flex flex-col items-center mb-6 z-10 relative">
-        <div className="w-full max-w-5xl bg-black/60 p-8 rounded-[3rem] border border-white/10 backdrop-blur-xl shadow-2xl flex flex-col items-center">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.6em] mb-6">Available Tactical Units</p>
+      <div className="w-full flex flex-col items-center mb-10 z-10 relative">
+        <div className="w-full max-w-6xl bg-black/70 p-10 rounded-[3.5rem] border border-white/10 backdrop-blur-xl shadow-[0_0_80px_rgba(0,0,0,0.5)] flex flex-col items-center">
+          <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.8em] mb-8">Available Tactical Units</p>
           
-          <div className="flex flex-row flex-wrap justify-center items-center gap-4 w-full">
+          <div className="flex flex-row flex-wrap justify-center items-center gap-5 w-full">
             <AnimatePresence>
               {hand.map((card) => (
                 <motion.div 
