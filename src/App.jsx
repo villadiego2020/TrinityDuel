@@ -3,6 +3,7 @@ import LandingPage from "./views/LandingPage";
 import HomePage from "./views/HomePage";
 import GamePage from "./views/GamePage";
 import ResultPage from "./views/ResultPage";
+import GuidePage from "./views/GuidePage"; // อย่าลืม Import ไฟล์ใหม่ที่มึงสร้างไว้ใน views
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState("LANDING");
@@ -22,9 +23,7 @@ function App() {
       setFinalWinner(newScore.player === 2 ? 'PLAYER' : 'BOT');
       setCurrentScreen("RESULT");
     } else {
-      // --- จุดที่แก้ ---
-      // ถ้ายังไม่จบแมตช์ ให้รีเซ็ตหน้าเลือกการ์ดใหม่
-      // กรูใช้วิธีสลับหน้าไป HOME แป๊บนึงแล้วดีดกลับ GAME ทันทีเพื่อให้ Component มัน Reset ใหม่หมด
+      // ถ้ายังไม่จบแมตช์ ให้ดีดกลับไปหน้าเลือกการ์ดใหม่ (GAME)
       setCurrentScreen("HOME"); 
       setTimeout(() => {
         setCurrentScreen("GAME");
@@ -38,7 +37,7 @@ function App() {
       {/* เอฟเฟกต์ Scan line */}
       <div className="scanlines"></div>
 
-      {/* คะแนน Match Score ( HUD ) - แสดงตลอดเวลาที่อยู่ในโหมด GAME */}
+      {/* คะแนน Match Score ( HUD ) - แสดงเมื่ออยู่ในโหมด GAME หรือดวลกันอยู่ */}
       {currentScreen === "GAME" && (
         <div className="fixed top-6 z-50 bg-black/60 px-8 py-2 rounded-full border border-white/10 backdrop-blur-md flex items-center gap-6 shadow-2xl scale-90 md:scale-100">
            <div className="flex flex-col items-center">
@@ -56,14 +55,31 @@ function App() {
         </div>
       )}
 
-      {/* เรียกหน้าเมนูต่างๆ */}
+      {/* เรียกหน้า View ต่างๆ */}
       <div className="w-full h-full flex items-center justify-center relative z-20">
-        {currentScreen === "LANDING" && <LandingPage onEnter={() => setCurrentScreen("HOME")} />}
-        {currentScreen === "HOME" && <HomePage onStartGame={() => {
-          setMatchScore({ player: 0, bot: 0 }); // รีเซ็ตแต้มใหม่ทุกครั้งที่เริ่มจากหน้าแรก
-          setCurrentScreen("GAME");
-        }} />}
-        {currentScreen === "GAME" && <GamePage onFinishSetup={handleGameEnd} />}
+        {currentScreen === "LANDING" && (
+            <LandingPage onEnter={() => setCurrentScreen("HOME")} />
+        )}
+
+        {currentScreen === "HOME" && (
+            <HomePage 
+                onStartGame={() => {
+                    setMatchScore({ player: 0, bot: 0 }); // รีเซ็ตแต้มใหม่เมื่อกดเริ่มเกมใหม่
+                    setCurrentScreen("GAME");
+                }} 
+                onOpenGuide={() => setCurrentScreen("GUIDE")} // ส่งฟังก์ชันเปิด Guide
+            />
+        )}
+
+        {/* เพิ่มส่วนการแสดงผลหน้า GUIDE */}
+        {currentScreen === "GUIDE" && (
+            <GuidePage onBack={() => setCurrentScreen("HOME")} />
+        )}
+
+        {currentScreen === "GAME" && (
+            <GamePage onFinishSetup={handleGameEnd} />
+        )}
+
         {currentScreen === "RESULT" && (
           <ResultPage 
             winner={finalWinner} 

@@ -12,6 +12,12 @@ export default function BattleArena({ playerDeck, onFinishGame }) {
   const [bIdx, setBIdx] = useState(0); 
   const [statusText, setStatusText] = useState("PREPARING...");
   const [isFighting, setIsFighting] = useState(false);
+  const [lastResult, setLastResult] = useState(null); // เก็บผลใบสุดท้ายเพื่อทำ Effect
+
+  // State สำหรับ Popup สรุปผลรอบ
+  const [showRoundPopup, setShowRoundPopup] = useState(false);
+  const [roundWinnerName, setRoundWinnerName] = useState("");
+  const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
     setBotDeck(generateDeck());
@@ -22,131 +28,164 @@ export default function BattleArena({ playerDeck, onFinishGame }) {
     return () => clearTimeout(startTimer);
   }, []);
 
+  // Loop การต่อสู้หลัก
   useEffect(() => {
-    if (!isFighting) return;
+    if (!isFighting || showRoundPopup) return;
+
     const roundTimer = setTimeout(() => {
+      // 1. เช็คว่ามีใครการ์ดหมดหรือยัง (จบรอบ 10 ใบ)
       if (pIdx >= playerDeck.length || bIdx >= botDeck.length) {
+        setIsFighting(false);
         const winner = pIdx >= playerDeck.length ? "BOT" : "PLAYER";
-        setStatusText(`TERMINATED: ${winner} WINS`);
-        setTimeout(() => onFinishGame(winner), 2500);
+        setRoundWinnerName(winner);
+        setShowRoundPopup(true);
         return;
       }
+
+      // 2. คำนวณผลใบปัจจุบัน
       const result = checkRoundWinner(playerDeck[pIdx], botDeck[bIdx]);
+      setLastResult(result);
       
       if (result === 'PLAYER') { 
-          setStatusText("TARGET ELIMINATED"); 
+          setStatusText("TARGET NEUTRALIZED"); 
           setBIdx(prev => prev + 1); 
       } else if (result === 'BOT') { 
-          setStatusText("CRITICAL DAMAGE"); 
+          setStatusText("SYSTEM BREACHED"); 
           setPIdx(prev => prev + 1); 
       } else { 
-          setStatusText("CLASH: DRAW"); 
+          setStatusText("KINETIC CLASH"); 
           setPIdx(prev => prev + 1); 
           setBIdx(prev => prev + 1); 
       }
     }, 1500);
     return () => clearTimeout(roundTimer);
-  }, [isFighting, pIdx, bIdx, playerDeck, botDeck, onFinishGame]);
+  }, [isFighting, pIdx, bIdx, playerDeck, botDeck, showRoundPopup]);
+
+  // Logic นับถอยหลังใน Popup
+  useEffect(() => {
+    let timer;
+    if (showRoundPopup && countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    } else if (showRoundPopup && countdown === 0) {
+      // เมื่อนับจบ ให้ส่งผลผู้ชนะกลับไปที่ App.jsx (BO3 Logic)
+      onFinishGame(roundWinnerName);
+    }
+    return () => clearTimeout(timer);
+  }, [showRoundPopup, countdown, roundWinnerName, onFinishGame]);
 
   return (
     <div className="w-screen h-screen flex flex-col items-center justify-center p-10 overflow-hidden relative z-0">
       
       {/* Background Section */}
-      <div 
-        className="absolute inset-0 z-[-1] bg-cover bg-center bg-no-repeat blur-sm scale-110"
-        style={{ backgroundImage: `url(${bgImage})` }}
-      />
-      <div className="absolute inset-0 z-[-1] bg-black/60" />
+      <div className="absolute inset-0 z-[-1] bg-cover bg-center bg-no-repeat blur-sm scale-110"
+           style={{ backgroundImage: `url(${bgImage})` }} />
+      <div className="absolute inset-0 z-[-1] bg-black/70" />
       
       {/* STATUS CENTER BAR */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 w-full">
-         <div 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] z-[-1] bg-cover bg-center bg-no-repeat blur-[2px] scale-110 opacity-20"
-            style={{ backgroundImage: `url(${bgImage})` }}
-         />
-         
-         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-cyan-500/10 rounded-full blur-[100px] z-[-1]"></div>
-         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-red-500/10 rounded-full blur-[100px] z-[-1]"></div>
-         
          <div className="h-[220px] bg-black/20 backdrop-blur-sm border-y-2 border-cyan-500/20 flex items-center justify-center relative z-10">
             <h2 className="text-7xl font-black italic text-white/5 uppercase tracking-[1.5em] select-none">Engaging</h2>
          </div>
          
          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-96 z-20 backdrop-blur-xl bg-black/50 p-6 rounded-2xl border-2 border-white/10 shadow-[0_0_50px_rgba(255,255,255,0.1)]">
-           <div className={`text-5xl font-black italic uppercase tracking-tighter text-center mb-3 leading-none
-             ${statusText.includes('WINS') ? 'text-yellow-400' :
-               statusText === 'TARGET ELIMINATED' ? 'text-cyan-400' :
-               statusText === 'CRITICAL DAMAGE' ? 'text-red-400' :
-               'text-white'
-             }
-           `}>
+           <motion.div 
+             key={statusText}
+             initial={{ scale: 0.8, opacity: 0 }}
+             animate={{ scale: 1, opacity: 1 }}
+             className={`text-4xl font-black italic uppercase tracking-tighter text-center mb-3 leading-none
+               ${statusText === 'TARGET NEUTRALIZED' ? 'text-cyan-400 drop-shadow-[0_0_10px_#22d3ee]' :
+                 statusText === 'SYSTEM BREACHED' ? 'text-red-500 drop-shadow-[0_0_10px_#ef4444]' :
+                 'text-white'}
+             `}>
              {statusText}
-           </div>
-           <div className="text-yellow-500 font-mono text-base bg-black/60 px-4 py-1 rounded-full border border-yellow-500/30 shadow-md">ROUND {pIdx + bIdx + 1}</div>
+           </motion.div>
+           <div className="text-yellow-500 font-mono text-base bg-black/60 px-4 py-1 rounded-full border border-yellow-500/30 shadow-md uppercase">Round Progress</div>
         </div>
       </div>
 
       {/* BATTLE FIELD */}
       <div className="w-full max-w-7xl flex flex-row items-center justify-between z-10 gap-32 relative">
+        {/* PLAYER SIDE */}
         <div className="flex flex-col items-center gap-8">
-          <div className="text-cyan-400 font-black italic tracking-widest bg-black/50 px-6 py-2 rounded-xl border-l-4 border-cyan-500 uppercase text-lg backdrop-blur-md shadow-[0_0_20px_rgba(8,145,178,0.3)]">Pilot: Player</div>
-          <motion.div key={`p-${pIdx}`} initial={{ x: -100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="shadow-[0_0_80px_rgba(8,145,178,0.6)] rounded-3xl">
+          <div className="text-cyan-400 font-black italic tracking-widest bg-black/50 px-6 py-2 rounded-xl border-l-4 border-cyan-500 uppercase text-lg backdrop-blur-md">Pilot: Player</div>
+          <motion.div 
+            key={`p-${pIdx}`} 
+            initial={{ x: -100, opacity: 0 }} 
+            animate={{ 
+                x: 0, 
+                opacity: 1,
+                rotate: lastResult === 'BOT' ? [0, -5, 5, -5, 5, 0] : 0 // สั่นเมื่อแพ้ใบนั้น
+            }} 
+            className="shadow-[0_0_80px_rgba(8,145,178,0.4)] rounded-3xl"
+          >
              <Card type={playerDeck[pIdx]?.id} isFlipped={false} />
           </motion.div>
-          <div className="w-64 h-3 bg-slate-900/80 rounded-full overflow-hidden border-2 border-cyan-500/40 shadow-inner p-[1px]">
-             <motion.div 
-               animate={{ width: `${((10 - pIdx) / 10) * 100}%` }} 
-               transition={{ duration: 0.8 }}
-               className="h-full bg-cyan-500 rounded-full shadow-[0_0_20px_#06b6d4,inset_0_0_10px_rgba(255,255,255,0.5)]" 
-             />
+          <div className="w-64 h-3 bg-slate-900/80 rounded-full overflow-hidden border-2 border-cyan-500/40 p-[1px]">
+             <motion.div animate={{ width: `${((10 - pIdx) / 10) * 100}%` }} className="h-full bg-cyan-500 shadow-[0_0_15px_#06b6d4]" />
           </div>
         </div>
 
-        <div className="flex-1"></div>
-
+        {/* BOT SIDE */}
         <div className="flex flex-col items-center gap-8">
-          <div className="text-red-400 font-black italic tracking-widest bg-black/50 px-6 py-2 rounded-xl border-r-4 border-red-500 uppercase text-lg backdrop-blur-md shadow-[0_0_20px_rgba(239,68,68,0.3)]">System: AI_BOT</div>
-          <motion.div key={`b-${bIdx}`} initial={{ x: 100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="shadow-[0_0_80px_rgba(239,68,68,0.5)] rounded-3xl">
+          <div className="text-red-400 font-black italic tracking-widest bg-black/50 px-6 py-2 rounded-xl border-r-4 border-red-500 uppercase text-lg backdrop-blur-md">System: AI_BOT</div>
+          <motion.div 
+            key={`b-${bIdx}`} 
+            initial={{ x: 100, opacity: 0 }} 
+            animate={{ 
+                x: 0, 
+                opacity: 1,
+                rotate: lastResult === 'PLAYER' ? [0, 5, -5, 5, -5, 0] : 0 // สั่นเมื่อแพ้ใบนั้น
+            }} 
+            className="shadow-[0_0_80px_rgba(239,68,68,0.4)] rounded-3xl"
+          >
              <Card type={botDeck[bIdx]?.id} isFlipped={false} />
           </motion.div>
-          <div className="w-64 h-3 bg-slate-900/80 rounded-full overflow-hidden border-2 border-red-500/40 shadow-inner p-[1px]">
-             <motion.div 
-               animate={{ width: `${((10 - bIdx) / 10) * 100}%` }} 
-               transition={{ duration: 0.8 }}
-               className="h-full bg-red-600 rounded-full shadow-[0_0_20px_#ef4444,inset_0_0_10px_rgba(255,255,255,0.5)]" 
-             />
+          <div className="w-64 h-3 bg-slate-900/80 rounded-full overflow-hidden border-2 border-red-500/40 p-[1px]">
+             <motion.div animate={{ width: `${((10 - bIdx) / 10) * 100}%` }} className="h-full bg-red-600 shadow-[0_0_15px_#ef4444]" />
           </div>
         </div>
       </div>
 
-      {/* FOOTER INFO */}
-      <div className="absolute bottom-6 w-full flex justify-between items-center px-16 z-10">
-        <div className="flex flex-col gap-1 items-start">
-          <span className="text-[10px] text-cyan-500/50 font-black tracking-widest uppercase">System Logs</span>
-          <div className="bg-cyan-950/30 border-l-2 border-cyan-500 px-4 py-2 backdrop-blur-md">
-            <span className="text-sm font-mono text-cyan-400 font-bold drop-shadow-[0_0_8px_#06b6d4]">
-              DECK_P_REMAINING: {10 - pIdx}
-            </span>
+      {/* --- ROUND RESULT POPUP --- */}
+      <AnimatePresence>
+        {showRoundPopup && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/90 backdrop-blur-xl" />
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0, y: 50 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              className="relative bg-slate-950 border-2 border-white/10 p-12 rounded-[3rem] flex flex-col items-center max-w-sm w-full shadow-[0_0_100px_rgba(255,255,255,0.1)]"
+            >
+              <div className="text-slate-500 font-mono text-[10px] tracking-[0.5em] mb-4 uppercase italic">Data Stream Terminated</div>
+              <h3 className="text-sm font-black text-white/30 uppercase tracking-widest mb-1">Round Winner</h3>
+              <div className={`text-6xl font-black italic uppercase tracking-tighter mb-10 
+                ${roundWinnerName === 'PLAYER' ? 'text-cyan-400 drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]' : 'text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.6)]'}`}>
+                {roundWinnerName}
+              </div>
+              
+              <div className="flex flex-col items-center">
+                <div className="text-xs text-slate-500 uppercase tracking-widest mb-2 font-bold">Initializing Next Phase</div>
+                <div className="text-7xl font-black italic text-yellow-500 tabular-nums">{countdown}</div>
+              </div>
+              
+              <div className="mt-12 w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: "100%" }} 
+                  animate={{ width: "0%" }} 
+                  transition={{ duration: 3, ease: "linear" }}
+                  className="h-full bg-cyan-500" 
+                />
+              </div>
+            </motion.div>
           </div>
-        </div>
+        )}
+      </AnimatePresence>
 
-        <div className="flex flex-col items-center">
-          <div className="flex items-center gap-2 bg-slate-900/50 px-6 py-2 rounded-full border border-white/5 backdrop-blur-md shadow-2xl">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]" />
-            <span className="text-sm font-mono text-white font-black tracking-[0.3em] italic uppercase">
-              Battle Sequence Active
-            </span>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1 items-end">
-          <span className="text-[10px] text-red-500/50 font-black tracking-widest uppercase">Enemy Status</span>
-          <div className="bg-red-950/30 border-r-2 border-red-500 px-4 py-2 backdrop-blur-md">
-            <span className="text-sm font-mono text-red-400 font-bold drop-shadow-[0_0_8px_#ef4444]">
-              DECK_B_REMAINING: {10 - bIdx}
-            </span>
-          </div>
-        </div>
+      {/* FOOTER Terminal */}
+      <div className="absolute bottom-6 w-full flex justify-between items-center px-16 z-10 opacity-60">
+        <div className="bg-cyan-950/30 border-l-2 border-cyan-500 px-4 py-2 font-mono text-xs text-cyan-400">P_DECK: {10 - pIdx}</div>
+        <div className="text-xs font-mono text-white/40 animate-pulse tracking-[0.5em]">BATTLE_SEQUENCE_ACTIVE</div>
+        <div className="bg-red-950/30 border-r-2 border-red-500 px-4 py-2 font-mono text-xs text-red-400 text-right">B_DECK: {10 - bIdx}</div>
       </div>
     </div>
   );
