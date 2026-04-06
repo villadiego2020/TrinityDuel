@@ -7,143 +7,126 @@ export default function BattleArena({ playerDeck, onFinishGame }) {
   const [botDeck, setBotDeck] = useState([]);
   const [pIdx, setPIdx] = useState(0); 
   const [bIdx, setBIdx] = useState(0); 
-  const [statusText, setStatusText] = useState("Wait for Opponent...");
+  const [statusText, setStatusText] = useState("PREPARING...");
   const [isFighting, setIsFighting] = useState(false);
 
   useEffect(() => {
     setBotDeck(generateDeck());
-    const timer = setTimeout(() => {
-        setIsFighting(true);
-        setStatusText("DUEL START!");
-    }, 2000);
-    return () => clearTimeout(timer);
+    setTimeout(() => { setIsFighting(true); setStatusText("BATTLE START"); }, 2000);
   }, []);
 
   useEffect(() => {
     if (!isFighting) return;
-
     const roundTimer = setTimeout(() => {
       if (pIdx >= playerDeck.length || bIdx >= botDeck.length) {
         const winner = pIdx >= playerDeck.length ? "BOT" : "PLAYER";
-        setStatusText(`MATCH ENDED: ${winner} WINS!`);
+        setStatusText(`TERMINATED: ${winner} WINS`);
         setTimeout(() => onFinishGame(winner), 2500);
         return;
       }
 
-      const pCard = playerDeck[pIdx];
-      const bCard = botDeck[bIdx];
-      const result = checkRoundWinner(pCard, bCard);
-
-      if (result === 'PLAYER') {
-        setStatusText("POINT FOR YOU!");
-        setBIdx(prev => prev + 1); 
-      } else if (result === 'BOT') {
-        setStatusText("BOT GETS POINT!");
-        setPIdx(prev => prev + 1); 
-      } else {
-        setStatusText("CLASH! DRAW!");
-        setPIdx(prev => prev + 1); 
-        setBIdx(prev => prev + 1);
-      }
-    }, 2000); // เพิ่มเวลาเป็น 2 วิ เพื่อให้โชว์รูปภาพชัดๆ ก่อนเปลี่ยนใบ
-
+      const result = checkRoundWinner(playerDeck[pIdx], botDeck[bIdx]);
+      if (result === 'PLAYER') { setStatusText("TARGET ELIMINATED"); setBIdx(prev => prev + 1); }
+      else if (result === 'BOT') { setStatusText("SHIELD BREACHED"); setPIdx(prev => prev + 1); }
+      else { setStatusText("CLASH DETECTED"); setPIdx(prev => prev + 1); setBIdx(prev => prev + 1); }
+    }, 2500);
     return () => clearTimeout(roundTimer);
   }, [isFighting, pIdx, bIdx]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#020617] p-4">
-      <div className="w-full max-w-xl bg-slate-900/80 border-2 border-white/5 rounded-[3rem] p-10 flex flex-col items-center justify-between min-h-[700px] shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden backdrop-blur-md">
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-[#020617] overflow-hidden text-white font-sans">
+      {/* Background Effect - Cyber Grid */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+
+      {/* TOP: BOT AREA */}
+      <div className="absolute top-10 right-20 flex flex-col items-end gap-2 z-10">
+        <div className="flex flex-col items-end">
+            <span className="text-[10px] font-black text-red-500 tracking-[0.3em] mb-1 uppercase">Corporate AI System</span>
+            <div className="w-64 h-2 bg-slate-800 rounded-full overflow-hidden border border-red-500/30">
+                <motion.div 
+                    animate={{ width: `${((10 - bIdx) / 10) * 100}%` }}
+                    className="h-full bg-gradient-to-r from-red-600 to-orange-500 shadow-[0_0_10px_#ef4444]"
+                />
+            </div>
+            <span className="text-[10px] mt-1 text-slate-500 font-bold">STABILITY: {((10 - bIdx) / 10) * 100}%</span>
+        </div>
+      </div>
+
+      {/* CENTER: BATTLE FIELD */}
+      <div className="relative w-full h-[600px] flex items-center justify-center">
+        {/* Arena Ring Effect */}
+        <div className="absolute w-[800px] h-[300px] border-2 border-blue-500/20 rounded-[100%] rotateX-60 shadow-[0_0_50px_rgba(59,130,246,0.1)]"></div>
         
-        {/* แสง Neon ตกแต่งพื้นหลัง */}
-        <div className="absolute top-0 w-full h-1/2 bg-blue-500/5 blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-0 w-full h-1/2 bg-red-500/5 blur-[100px] pointer-events-none" />
-
-        {/* Enemy Side */}
-        <div className="flex flex-col items-center gap-6 z-10">
-          <div className="flex items-center gap-3">
-            <div className="h-[2px] w-12 bg-gradient-to-l from-red-500 to-transparent" />
-            <div className="px-4 py-1 bg-red-500/10 text-red-500 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]">Enemy Bot</div>
-            <div className="h-[2px] w-12 bg-gradient-to-r from-red-500 to-transparent" />
-          </div>
-          
-          <div className="h-44 flex items-center justify-center">
+        {/* BOT CARD SLOT */}
+        <div className="absolute top-[20%] flex flex-col items-center">
             <AnimatePresence mode="wait">
-              <motion.div
-                key={`bot-${bIdx}`}
-                initial={{ y: -50, opacity: 0, scale: 0.5, rotate: -5 }}
-                animate={{ y: 0, opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ y: 30, opacity: 0, scale: 1.1, filter: "brightness(3) blur(5px)" }}
-                transition={{ type: "spring", stiffness: 260, damping: 20 }}
-              >
-                {botDeck[bIdx] && <Card type={botDeck[bIdx].id} disabled />}
-              </motion.div>
+                <motion.div
+                    key={`bot-${bIdx}`}
+                    initial={{ y: -100, opacity: 0, scale: 0.8, rotateX: 20 }}
+                    animate={{ y: 0, opacity: 1, scale: 1, rotateX: 0 }}
+                    exit={{ x: 100, opacity: 0, scale: 0.5 }}
+                    className="shadow-[0_0_30px_rgba(239,68,68,0.3)] rounded-lg"
+                >
+                    {botDeck[bIdx] && <Card type={botDeck[bIdx].id} disabled />}
+                </motion.div>
             </AnimatePresence>
-          </div>
-          <div className="flex flex-col items-center">
-             <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Cards Remaining</p>
-             <div className="flex gap-1 mt-1">
-                {Array.from({length: 10}).map((_, i) => (
-                    <div key={i} className={`w-3 h-1.5 rounded-full ${i < (10 - bIdx) ? 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]' : 'bg-slate-800'}`} />
-                ))}
-             </div>
-          </div>
         </div>
 
-        {/* Center Area (VS & Status) */}
-        <div className="flex flex-col items-center z-10 my-6 relative">
+        {/* VS TEXT */}
+        <div className="z-0 pointer-events-none">
+            <h1 className="text-[120px] font-black italic opacity-5 tracking-tighter">TRINITY</h1>
+        </div>
+
+        {/* PLAYER CARD SLOT */}
+        <div className="absolute bottom-[20%] flex flex-col items-center">
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={`player-${pIdx}`}
+                    initial={{ y: 100, opacity: 0, scale: 0.8, rotateX: -20 }}
+                    animate={{ y: 0, opacity: 1, scale: 1, rotateX: 0 }}
+                    exit={{ x: -100, opacity: 0, scale: 0.5 }}
+                    className="shadow-[0_0_30px_rgba(59,130,246,0.3)] rounded-lg"
+                >
+                    {playerDeck[pIdx] && <Card type={playerDeck[pIdx].id} disabled />}
+                </motion.div>
+            </AnimatePresence>
+        </div>
+      </div>
+
+      {/* BOTTOM: PLAYER UI (HUD) */}
+      <div className="absolute bottom-10 left-10 flex flex-col gap-4 z-10">
+        <div className="bg-slate-900/60 backdrop-blur-md border border-white/10 p-4 rounded-2xl w-80 shadow-2xl">
+            <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-black italic text-blue-400">TRINITY PILOT_01</span>
+                <span className="text-[10px] text-slate-500">Lv. 99</span>
+            </div>
+            {/* HP Bar */}
+            <div className="w-full h-3 bg-slate-800 rounded-sm mb-1">
+                <motion.div 
+                    animate={{ width: `${((10 - pIdx) / 10) * 100}%` }}
+                    className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 shadow-[0_0_10px_#3b82f6]"
+                />
+            </div>
+            <div className="flex justify-between text-[9px] font-bold text-slate-400">
+                <span>HP {1000 - (pIdx * 100)} / 1000</span>
+                <span>{((10 - pIdx) / 10) * 100}%</span>
+            </div>
+        </div>
+      </div>
+
+      {/* STATUS OVERLAY */}
+      <div className="absolute top-1/2 left-10 -translate-y-1/2 flex flex-col gap-1">
+        <div className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest bg-yellow-500/10 px-2 py-1 self-start border-l-2 border-yellow-500 mb-2">Battle Feed</div>
+        <AnimatePresence>
             <motion.div 
-              animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
-              transition={{ repeat: Infinity, duration: 3 }}
-              className="text-8xl font-black italic text-white absolute -top-8 pointer-events-none select-none"
-            >
-              VS
-            </motion.div>
-            
-            <AnimatePresence mode="wait">
-              <motion.h2 
                 key={statusText}
-                initial={{ y: 10, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -10, opacity: 0 }}
-                className="text-3xl font-black text-yellow-500 tracking-tighter uppercase italic z-20 text-center drop-shadow-[0_0_10px_rgba(234,179,8,0.3)]"
-              >
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                className="text-lg font-black italic tracking-tighter"
+            >
                 {statusText}
-              </motion.h2>
-            </AnimatePresence>
-        </div>
-
-        {/* Player Side */}
-        <div className="flex flex-col items-center gap-6 z-10">
-          <div className="flex flex-col items-center">
-             <div className="flex gap-1 mb-1">
-                {Array.from({length: 10}).map((_, i) => (
-                    <div key={i} className={`w-3 h-1.5 rounded-full ${i < (10 - pIdx) ? 'bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.5)]' : 'bg-slate-800'}`} />
-                ))}
-             </div>
-             <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Your Fleet Status</p>
-          </div>
-
-          <div className="h-44 flex items-center justify-center">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`player-${pIdx}`}
-                initial={{ y: 50, opacity: 0, scale: 0.5, rotate: 5 }}
-                animate={{ y: 0, opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ y: -30, opacity: 0, scale: 1.1, filter: "brightness(3) blur(5px)" }}
-                transition={{ type: "spring", stiffness: 260, damping: 20 }}
-              >
-                {playerDeck[pIdx] && <Card type={playerDeck[pIdx].id} disabled />}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="h-[2px] w-12 bg-gradient-to-l from-blue-500 to-transparent" />
-            <div className="px-4 py-1 bg-blue-500/10 text-blue-500 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.2)]">Trinity Pilot</div>
-            <div className="h-[2px] w-12 bg-gradient-to-r from-blue-500 to-transparent" />
-          </div>
-        </div>
-
+            </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
