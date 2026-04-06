@@ -1,27 +1,29 @@
 import { useState, useEffect, useRef } from "react";
+import { AnimatePresence } from "framer-motion"; // เพิ่ม AnimatePresence เข้ามาด้วย
 import LandingPage from "./views/LandingPage";
 import HomePage from "./views/HomePage";
 import GamePage from "./views/GamePage";
 import ResultPage from "./views/ResultPage";
 import GuidePage from "./views/GuidePage";
+import SettingsPage from "./views/SettingsPage";
 
-// Import BGM หลัก (เช็ค path มึงให้ดีนะ)
+// Assets
 import bgmMain from "./assets/sounds/bgm_main.mp3";
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState("LANDING");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false); // ใช้ state เปิด/ปิด Overlay แทนเปลี่ยนหน้า
   const [matchScore, setMatchScore] = useState({ player: 0, bot: 0 });
   const [finalWinner, setFinalWinner] = useState(null);
   
-  // ใช้ useRef เพื่อไม่ให้ Audio object ถูกสร้างใหม่ทุกครั้งที่ Re-render
+  // --- 🔊 ระบบเสียง Master Volume ---
+  const [volume, setVolume] = useState(0.5);
   const mainBgmRef = useRef(null);
 
-  // --- 1. ระบบจัดการเพลงหลัก (Global BGM) ---
   useEffect(() => {
     mainBgmRef.current = new Audio(bgmMain);
     mainBgmRef.current.loop = true;
-    mainBgmRef.current.volume = 0.3;
-
+    
     return () => {
       if (mainBgmRef.current) {
         mainBgmRef.current.pause();
@@ -30,22 +32,22 @@ function App() {
     };
   }, []);
 
-  // เช็คการเปลี่ยนหน้าเพื่อ เล่น/หยุด เพลง
   useEffect(() => {
     if (!mainBgmRef.current) return;
 
-    // รายชื่อหน้าที่ต้องการให้เพลง Main เล่นต่อเนื่อง
+    mainBgmRef.current.volume = volume;
+
+    // เพลง Main จะเล่นในหน้าเหล่านี้ (รวมถึงตอนเปิด Settings Overlay ด้วย)
     const mainScreens = ["HOME", "GUIDE", "GAME"];
     
     if (mainScreens.includes(currentScreen)) {
-      // Browser จะยอมให้ play() ก็ต่อเมื่อ User เคยคลิกหน้าจอแล้วอย่างน้อย 1 ครั้ง
       mainBgmRef.current.play().catch(() => console.log("Waiting for user interaction..."));
     } else {
       mainBgmRef.current.pause();
     }
-  }, [currentScreen]);
+  }, [currentScreen, volume]);
 
-  // --- 2. ระบบจัดการจบเกม (BO3) ---
+  // --- ⚔️ ระบบจัดการจบเกม (BO3) ---
   const handleGameEnd = (roundWinner) => {
     const newScore = {
       ...matchScore,
@@ -57,7 +59,6 @@ function App() {
       setFinalWinner(newScore.player === 2 ? 'PLAYER' : 'BOT');
       setCurrentScreen("RESULT");
     } else {
-      // รีเซ็ตหน้า Game เพื่อเริ่มรอบใหม่
       setCurrentScreen("HOME"); 
       setTimeout(() => {
         setCurrentScreen("GAME");
@@ -69,28 +70,34 @@ function App() {
     <main className="fixed inset-0 w-screen h-screen bg-slate-950 flex items-center justify-center overflow-hidden m-0 p-0 font-sans text-white z-0">
       
       {/* เอฟเฟกต์ Scan line */}
-      <div className="scanlines"></div>
+      <div className="scanlines pointer-events-none absolute inset-0 z-50"></div>
 
-      {/* คะแนน Match Score ( HUD ) */}
-      {currentScreen === "GAME" && (
-        <div className="fixed top-6 z-50 bg-black/60 px-8 py-2 rounded-full border border-white/10 backdrop-blur-md flex items-center gap-6 shadow-2xl scale-90 md:scale-100">
-           <div className="flex flex-col items-center">
-             <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Player</span>
-             <span className="text-cyan-400 text-2xl font-black">{matchScore.player}</span>
-           </div>
-           <div className="flex flex-col items-center opacity-30">
-             <span className="text-[8px] uppercase font-black">BO3</span>
-             <span className="text-white text-xl font-light">VS</span>
-           </div>
-           <div className="flex flex-col items-center">
-             <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Bot</span>
-             <span className="text-red-400 text-2xl font-black">{matchScore.bot}</span>
-           </div>
-        </div>
+      {/* ⚙️ ปุ่ม Settings ลอยตัว - เปลี่ยนเป็นสั่งเปิด/ปิด Overlay */}
+      {["HOME", "GUIDE", "GAME"].includes(currentScreen) && (
+        <button 
+          onClick={() => setIsSettingsOpen(true)}
+          className="fixed top-6 right-6 z-[100] bg-black/40 hover:bg-cyan-500/20 p-3 rounded-full border border-white/10 backdrop-blur-md transition-all group shadow-xl active:scale-90"
+        >
+          <span className="text-xl group-hover:rotate-90 transition-transform inline-block">⚙️</span>
+        </button>
       )}
 
-      {/* เรียกหน้า View ต่างๆ */}
+      {/* 🔊 SETTINGS OVERLAY (Real-time) */}
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <SettingsPage 
+              volume={volume} 
+              setVolume={setVolume} 
+              onBack={() => setIsSettingsOpen(false)} 
+            />
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 🖥️ ส่วนแสดงผลหน้า View ต่างๆ (ไม่ Unmount ตอนเปิด Settings) */}
       <div className="w-full h-full flex items-center justify-center relative z-20">
+        
         {currentScreen === "LANDING" && (
             <LandingPage onEnter={() => setCurrentScreen("HOME")} />
         )}
@@ -110,7 +117,7 @@ function App() {
         )}
 
         {currentScreen === "GAME" && (
-            <GamePage onFinishSetup={handleGameEnd} />
+            <GamePage onFinishSetup={handleGameEnd} globalVolume={volume} />
         )}
 
         {currentScreen === "RESULT" && (
@@ -123,6 +130,7 @@ function App() {
             }} 
           />
         )}
+        
       </div>
     </main>
   );

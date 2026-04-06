@@ -9,7 +9,7 @@ import bgImage from '../assets/Background.png';
 import sfxDeploy from '../assets/sounds/sfx_deploy.mp3';
 import sfxClick from '../assets/sounds/sfx_click.mp3';
 
-export default function GamePage({ onFinishSetup }) {
+export default function GamePage({ onFinishSetup, globalVolume }) {
   const [hand, setHand] = useState([]); 
   const [orderedDeck, setOrderedDeck] = useState([]); 
   const [isBattleMode, setIsBattleMode] = useState(false);
@@ -20,23 +20,22 @@ export default function GamePage({ onFinishSetup }) {
     setIsBattleMode(false); 
   }, []);
 
-  // --- Helper สำหรับเล่นเสียง ---
+  // --- 🔊 ระบบจัดการเสียง SFX โดยใช้ Global Volume ---
   const playDeploySfx = () => {
     const audio = new Audio(sfxDeploy);
-    audio.volume = 0.5;
+    audio.volume = globalVolume; // ใช้ค่า Master จาก App.jsx
     audio.play().catch(e => console.log("Audio blocked"));
   };
 
   const playClickSfx = () => {
     const audio = new Audio(sfxClick);
-    audio.volume = 0.4;
+    audio.volume = globalVolume; // ใช้ค่า Master จาก App.jsx
     audio.play().catch(e => console.log("Audio blocked"));
   };
 
   const selectCard = (card) => {
     if (orderedDeck.length >= 10) return;
     
-    // เล่นเสียงทุกครั้งที่วางการ์ดลง Queue
     playDeploySfx();
 
     const newDeck = [...orderedDeck, card];
@@ -52,18 +51,20 @@ export default function GamePage({ onFinishSetup }) {
   };
 
   const undoCard = (card) => {
-    playClickSfx(); // เสียงยกเลิกการเลือก
+    playClickSfx();
     setHand([...hand, card]);
     setOrderedDeck(orderedDeck.filter(c => c.instanceId !== card.instanceId));
   };
 
+  // --- เมื่อสลับเข้าโหมด Battle ต้องส่ง globalVolume ต่อไปด้วย ---
   if (isBattleMode) {
-    return <BattleArena playerDeck={orderedDeck} onFinishGame={onFinishGameLocal} />;
-  }
-
-  // Wrapper สำหรับปุ่มเริ่มสู้ (เพื่อใส่เสียง)
-  function onFinishGameLocal(winner) {
-    onFinishSetup(winner);
+    return (
+      <BattleArena 
+        playerDeck={orderedDeck} 
+        onFinishGame={onFinishSetup} 
+        globalVolume={globalVolume} 
+      />
+    );
   }
 
   const isDeckFull = orderedDeck.length === 10;
@@ -71,8 +72,11 @@ export default function GamePage({ onFinishSetup }) {
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col items-center justify-between p-8 overflow-hidden font-sans text-white z-0">
       
-      <div className="absolute inset-0 z-[-1] bg-cover bg-center bg-no-repeat blur-sm scale-110"
-           style={{ backgroundImage: `url(${bgImage})` }} />
+      {/* Background Section */}
+      <div 
+        className="absolute inset-0 z-[-1] bg-cover bg-center bg-no-repeat blur-sm scale-110"
+        style={{ backgroundImage: `url(${bgImage})` }}
+      />
       <div className="absolute inset-0 z-[-1] bg-black/50" />
       
       {/* 1. TOP: Deployment Slots */}
@@ -99,7 +103,11 @@ export default function GamePage({ onFinishSetup }) {
                   ${orderedDeck[i] ? 'border-transparent shadow-[0_0_25px_rgba(34,211,238,0.2)] scale-105' : 'border-slate-800 bg-black/40'}
                 `}>
                   {orderedDeck[i] ? (
-                    <Card type={orderedDeck[i].id} onClick={() => undoCard(orderedDeck[i])} showDown={true} />
+                    <Card 
+                      type={orderedDeck[i].id} 
+                      onClick={() => undoCard(orderedDeck[i])} 
+                      showDown={true} 
+                    />
                   ) : (
                     <span className="text-xs text-slate-800 font-black italic">{i + 1}</span>
                   )}
@@ -110,12 +118,12 @@ export default function GamePage({ onFinishSetup }) {
         </div>
       </div>
 
-      {/* 2. Middle Area: Fixed Engage Button */}
+      {/* 2. Middle Area: Engage Button */}
       <div className="flex-1 flex flex-col items-center justify-center z-10 relative w-full">
          <button 
           disabled={!isDeckFull}
           onClick={() => {
-            playDeploySfx(); // เสียงกดเริ่ม
+            playDeploySfx();
             setIsBattleMode(true);
           }}
           className={`
