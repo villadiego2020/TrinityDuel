@@ -3,7 +3,7 @@ import { checkRoundWinner, generateDeck } from '../../utils/gameLogic';
 import Card from './Card';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Assets - เช็ค Path ให้ดีนะมึง
+// Assets
 import bgImage from '../../assets/Background.png';
 import bgmBattle from "../../assets/sounds/bgm_battle.mp3";
 import sfxWin from "../../assets/sounds/sfx_win.mp3";
@@ -19,30 +19,23 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
   const [isFighting, setIsFighting] = useState(false);
   const [lastResult, setLastResult] = useState(null); 
 
-  // State สำหรับ Popup
   const [showRoundPopup, setShowRoundPopup] = useState(false);
   const [roundWinnerName, setRoundWinnerName] = useState("");
   const [countdown, setCountdown] = useState(3);
 
-  // --- 🔊 ระบบจัดการเสียง SFX ---
   const playSFX = (file) => {
     const audio = new Audio(file);
-    audio.volume = globalVolume; // ใช้ค่า Master Volume จาก Setting
+    audio.volume = globalVolume;
     audio.play().catch(e => console.log("SFX Blocked"));
   };
 
-  // --- 🎵 ระบบจัดการเพลง Battle (BGM) ---
   useEffect(() => {
     const bgm = new Audio(bgmBattle);
     bgm.loop = true;
     bgm.volume = globalVolume;
     bgm.play().catch(e => console.log("BGM Blocked"));
-
-    return () => {
-      bgm.pause();
-      bgm.currentTime = 0;
-    };
-  }, [globalVolume]); // ถ้าปรับ Setting ระหว่างสู้ เพลงจะดัง/เบาทันที
+    return () => { bgm.pause(); bgm.currentTime = 0; };
+  }, [globalVolume]);
 
   useEffect(() => {
     setBotDeck(generateDeck());
@@ -53,12 +46,10 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
     return () => clearTimeout(startTimer);
   }, []);
 
-  // Loop การต่อสู้
   useEffect(() => {
     if (!isFighting || showRoundPopup) return;
 
     const roundTimer = setTimeout(() => {
-      // 1. เช็คจบรอบ (10 ใบ)
       if (pIdx >= playerDeck.length || bIdx >= botDeck.length) {
         setIsFighting(false);
         const winner = pIdx >= playerDeck.length ? "BOT" : "PLAYER";
@@ -68,21 +59,20 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
         return;
       }
 
-      // 2. คำนวณผล
       const result = checkRoundWinner(playerDeck[pIdx], botDeck[bIdx]);
       setLastResult(result);
       
       if (result === 'PLAYER') { 
           playSFX(sfxWin); 
-          setStatusText("TARGET NEUTRALIZED"); 
+          setStatusText("YOU WIN"); // ชนะใบนี้
           setBIdx(prev => prev + 1); 
       } else if (result === 'BOT') { 
           playSFX(sfxLose);
-          setStatusText("SYSTEM BREACHED"); 
+          setStatusText("YOU LOSE"); // แพ้ใบนี้
           setPIdx(prev => prev + 1); 
       } else { 
           playSFX(sfxDraw);
-          setStatusText("KINETIC CLASH"); 
+          setStatusText("DRAW"); // เสมอ
           setPIdx(prev => prev + 1); 
           setBIdx(prev => prev + 1); 
       }
@@ -90,7 +80,6 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
     return () => clearTimeout(roundTimer);
   }, [isFighting, pIdx, bIdx, playerDeck, botDeck, showRoundPopup]);
 
-  // Logic นับถอยหลัง
   useEffect(() => {
     let timer;
     if (showRoundPopup && countdown > 0) {
@@ -104,7 +93,6 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
   return (
     <div className="fixed inset-0 w-screen h-screen flex flex-col items-center justify-center p-10 overflow-hidden relative z-0">
       
-      {/* Background */}
       <div className="absolute inset-0 z-[-1] bg-cover bg-center bg-no-repeat blur-sm scale-110"
            style={{ backgroundImage: `url(${bgImage})` }} />
       <div className="absolute inset-0 z-[-1] bg-black/70" />
@@ -133,8 +121,10 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
 
       {/* BATTLE FIELD */}
       <div className="w-full max-w-7xl flex flex-row items-center justify-between z-10 gap-32 relative">
-        <div className="flex flex-col items-center gap-8">
+        {/* PLAYER SIDE */}
+        <div className="flex flex-col items-center gap-10"> {/* เพิ่มช่องว่างระหว่างส่วนประกอบเป็น gap-10 */}
           <div className="text-cyan-400 font-black italic tracking-widest bg-black/50 px-6 py-2 rounded-xl border-l-4 border-cyan-500 uppercase text-lg backdrop-blur-md">Pilot: Player</div>
+          
           <motion.div 
             key={`p-${pIdx}`} 
             initial={{ x: -100, opacity: 0 }} 
@@ -146,13 +136,27 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
           >
              <Card type={playerDeck[pIdx]?.id} isFlipped={false} />
           </motion.div>
-          <div className="w-64 h-3 bg-slate-900/80 rounded-full overflow-hidden border-2 border-cyan-500/40 p-[1px]">
-             <motion.div animate={{ width: `${((10 - pIdx) / 10) * 100}%` }} className="h-full bg-cyan-500 shadow-[0_0_15px_#06b6d4]" />
+          
+          {/* ขยับลงมาและเพิ่มระยะห่างภายใน */}
+          <div className="flex flex-col items-center gap-5 mt-4"> {/* mt-4 ช่วยดันกลุ่มนี้ลงมาจากตัวการ์ด */}
+            <div className="w-64 h-3 bg-slate-900/80 rounded-full overflow-hidden border-2 border-cyan-500/40 p-[1px]">
+               <motion.div animate={{ width: `${((10 - pIdx) / 10) * 100}%` }} className="h-full bg-cyan-500 shadow-[0_0_15px_#06b6d4]" />
+            </div>
+            
+            {/* ตัวเลข Deck ที่เหลือ - ปรับให้ดูเป็นเกจวัดที่เท่ขึ้น */}
+            <div className="flex flex-col items-center">
+              <span className="text-4xl font-black italic text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.6)] leading-none">
+                {10 - pIdx}
+              </span>
+              <span className="text-[10px] uppercase text-cyan-500/50 font-bold tracking-[0.3em] mt-1">Units_Available</span>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-8">
+        {/* BOT SIDE */}
+        <div className="flex flex-col items-center gap-10"> {/* เพิ่ม gap-10 */}
           <div className="text-red-400 font-black italic tracking-widest bg-black/50 px-6 py-2 rounded-xl border-r-4 border-red-500 uppercase text-lg backdrop-blur-md">System: AI_BOT</div>
+          
           <motion.div 
             key={`b-${bIdx}`} 
             initial={{ x: 100, opacity: 0 }} 
@@ -164,8 +168,19 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
           >
              <Card type={botDeck[bIdx]?.id} isFlipped={false} />
           </motion.div>
-          <div className="w-64 h-3 bg-slate-900/80 rounded-full overflow-hidden border-2 border-red-500/40 p-[1px]">
-             <motion.div animate={{ width: `${((10 - bIdx) / 10) * 100}%` }} className="h-full bg-red-600 shadow-[0_0_15px_#ef4444]" />
+          
+          {/* ขยับลงมาและเพิ่มระยะห่างภายใน */}
+          <div className="flex flex-col items-center gap-5 mt-4"> {/* mt-4 ช่วยดันลงมา */}
+            <div className="w-64 h-3 bg-slate-900/80 rounded-full overflow-hidden border-2 border-red-500/40 p-[1px]">
+               <motion.div animate={{ width: `${((10 - bIdx) / 10) * 100}%` }} className="h-full bg-red-600 shadow-[0_0_15px_#ef4444]" />
+            </div>
+            
+            <div className="flex flex-col items-center">
+              <span className="text-4xl font-black italic text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.6)] leading-none">
+                {10 - bIdx}
+              </span>
+              <span className="text-[10px] uppercase text-red-500/50 font-bold tracking-[0.3em] mt-1">Enemy_Reserve</span>
+            </div>
           </div>
         </div>
       </div>
@@ -191,25 +206,14 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
                 <div className="text-xs text-slate-500 uppercase tracking-widest mb-2 font-bold italic">Initializing Next Phase</div>
                 <div className="text-7xl font-black italic text-yellow-500 tabular-nums">{countdown}</div>
               </div>
-              
-              <div className="mt-12 w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: "100%" }} 
-                  animate={{ width: "0%" }} 
-                  transition={{ duration: 3, ease: "linear" }}
-                  className="h-full bg-cyan-500" 
-                />
-              </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* FOOTER */}
-      <div className="absolute bottom-6 w-full flex justify-between items-center px-16 z-10 opacity-60">
-        <div className="bg-cyan-950/30 border-l-2 border-cyan-500 px-4 py-2 font-mono text-xs text-cyan-400">P_DECK: {10 - pIdx}</div>
-        <div className="text-xs font-mono text-white/40 animate-pulse tracking-[0.5em]">BATTLE_SEQUENCE_ACTIVE</div>
-        <div className="bg-red-950/30 border-r-2 border-red-500 px-4 py-2 font-mono text-xs text-red-400 text-right">B_DECK: {10 - bIdx}</div>
+      {/* FOOTER (เอาจำนวน Deck ออกจากตรงนี้แล้ว) */}
+      <div className="absolute bottom-6 w-full flex justify-center items-center px-16 z-10 opacity-30">
+        <div className="text-xs font-mono text-white animate-pulse tracking-[1em] uppercase">Battle Sequence Active</div>
       </div>
     </div>
   );
