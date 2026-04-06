@@ -27,8 +27,7 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
   }, []);
 
   useEffect(() => {
-    const newDeck = generateDeck();
-    setBotDeck(newDeck);
+    setBotDeck(generateDeck());
     const t = setTimeout(() => {
       setStatusText("READY? DUEL!");
       setIsReady(true); 
@@ -43,10 +42,9 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
   }, [globalVolume]);
 
   const handleGameEnd = useCallback((currentPIdx, currentBIdx) => {
-    const playerRemaining = playerDeck.length - currentPIdx;
-    const botRemaining = botDeck.length - currentBIdx;
-    const winner = playerRemaining > botRemaining ? 'PLAYER' : 'BOT';
-    onFinishGame(winner, { player: playerRemaining, bot: botRemaining });
+    const pScore = playerDeck.length - currentPIdx;
+    const bScore = botDeck.length - currentBIdx;
+    onFinishGame(pScore > bScore ? 'PLAYER' : 'BOT', { player: pScore, bot: bScore });
   }, [playerDeck, botDeck, onFinishGame]);
 
   const triggerNextRound = useCallback((nextPIdx, nextBIdx) => {
@@ -58,10 +56,7 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
     setIsFighting(true);
     setLastResult(null);
     setStatusText("CLASHING!");
-
-    setTimeout(() => {
-      processResult(nextPIdx, nextBIdx);
-    }, 1200);
+    setTimeout(() => processResult(nextPIdx, nextBIdx), 1200);
   }, [isReady, playerDeck, botDeck, handleGameEnd]);
 
   useEffect(() => {
@@ -74,8 +69,7 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
     const pCard = playerDeck[currentPIdx];
     const bCard = botDeck[currentBIdx];
     const result = checkRoundWinner(pCard, bCard);
-
-    setLastResult(result); 
+    setLastResult(result);
 
     let nextPIdx = currentPIdx;
     let nextBIdx = currentBIdx;
@@ -99,89 +93,89 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
       nextTurnText = "BOTH UNITS PREPARING...";
     }
 
-    // หน่วงเวลาโชว์การ์ดที่แพ้ Fade Out
     setTimeout(() => {
         setIsFighting(false);
         setPIdx(nextPIdx);
         setBIdx(nextBIdx);
-
         if (nextPIdx < playerDeck.length && nextBIdx < botDeck.length) {
             setTimeout(() => {
                 setStatusText(nextTurnText);
-                setTimeout(() => {
-                    triggerNextRound(nextPIdx, nextBIdx);
-                }, 1000);
-            }, 800);
-        } else {
-            setTimeout(() => {
-                handleGameEnd(nextPIdx, nextBIdx);
+                setTimeout(() => triggerNextRound(nextPIdx, nextBIdx), 1000);
             }, 1000);
+        } else {
+            setTimeout(() => handleGameEnd(nextPIdx, nextBIdx), 1000);
         }
-    }, 1800); // ระยะเวลาแสดงผล Clashing + Fade Out
+    }, 2200);
   };
 
- return (
+  return (
     <div className="fixed inset-0 w-full h-[100dvh] flex flex-col items-center justify-start overflow-hidden text-white bg-slate-950 font-sans">
       <div className="absolute inset-0 z-[-1] bg-cover bg-center scale-110 blur-sm opacity-50" style={{ backgroundImage: `url(${bgImage})` }} />
       
-      {/* 🏟️ Arena Layout */}
-      <div className="relative z-10 w-full h-full p-2 md:p-8 flex flex-col md:grid md:grid-cols-3 items-center justify-between gap-2 md:gap-6 pt-10 md:pt-16 pb-4 md:pb-8">
-        
-        {/* --- 🔴 BOT SIDE --- */}
-        <div className="flex flex-col items-center order-1 md:order-none scale-[0.85] md:scale-100 origin-top md:origin-center shrink-0">
-          <h2 className="text-base md:text-2xl font-black text-red-500 mb-2 uppercase italic tracking-tighter">Cyber Bot</h2>
-          
-          {/* Card Container */}
-          <div className="relative w-20 md:w-36 aspect-[3/5] bg-red-500/10 border-2 border-red-500/30 rounded-2xl p-1 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-            <Card type={botDeck[bIdx]?.id || 'BACK'} isFlipped={!isFighting && !lastResult} />
-            
-            {/* 🏷️ Improved Bot Deck Badge: ปรับให้ใหญ่และเด่นขึ้น */}
-            <div className="absolute -bottom-4 -right-2 md:-bottom-6 md:-right-4 z-30">
-              <div className="bg-red-600 text-white px-3 py-1 md:px-4 md:py-2 rounded-lg md:rounded-xl border-2 border-white/20 shadow-[0_4px_15px_rgba(220,38,38,0.6)] flex flex-col items-center min-w-[50px] md:min-w-[70px]">
-                <span className="text-[7px] md:text-[10px] font-black uppercase tracking-tighter opacity-80 leading-none mb-0.5">Reserve</span>
-                <span className="text-sm md:text-2xl font-black italic leading-none">{Math.max(0, botDeck.length - bIdx)}</span>
-              </div>
-            </div>
+      {/* 📊 TOP HUD: Score Bar */}
+      <div className="absolute top-0 left-0 w-full pt-4 px-6 z-40 flex flex-col items-center pointer-events-none">
+        <div className="w-full max-w-2xl flex items-center gap-4">
+          {/* ขยับ Player Score มาไว้ซ้าย */}
+          <div className="flex flex-col items-start flex-1">
+            <span className="text-[9px] font-black text-cyan-400 italic leading-none">PILOT_CORE</span>
+            <span className="text-xl md:text-3xl font-black italic tabular-nums leading-none mt-1">{playerDeck.length - pIdx}</span>
+          </div>
+          <div className="relative h-2 md:h-4 flex-[3] bg-slate-900/80 border border-white/20 rounded-full overflow-hidden flex shadow-lg">
+            <motion.div animate={{ width: `${((playerDeck.length - pIdx) / 10) * 100}%` }} className="h-full bg-cyan-500 shadow-[0_0_10px_#22d3ee]" />
+            <div className="w-[2px] h-full bg-white z-10" />
+            <motion.div animate={{ width: `${((botDeck.length - bIdx) / 10) * 100}%` }} className="h-full bg-red-600 shadow-[0_0_10px_#ef4444]" />
+          </div>
+          {/* ขยับ Bot Score มาไว้ขวา */}
+          <div className="flex flex-col items-end flex-1">
+            <span className="text-[9px] font-black text-red-500 italic leading-none">BOT_CORE</span>
+            <span className="text-xl md:text-3xl font-black italic tabular-nums leading-none mt-1">{botDeck.length - bIdx}</span>
           </div>
         </div>
+      </div>
 
-        {/* --- ⚔️ BATTLE CENTER (Clash Animation) --- */}
-        <div className="relative flex flex-col items-center justify-center order-2 md:order-none w-full h-24 md:h-full flex-grow-0 md:flex-grow min-h-[96px] md:min-h-0 overflow-visible z-20">
-          <div className="absolute top-0 md:top-1/4 text-center w-full px-2">
+      {/* 🏟️ ARENA LAYOUT: สลับฝั่ง Player/Bot */}
+      <div className="relative z-10 w-full h-full p-2 flex flex-col md:grid md:grid-cols-3 items-center justify-around md:justify-between gap-2 pt-20 md:pt-24 pb-4">
+        
+        {/* PLAYER SIDE (Left on PC, Bottom on Mobile) */}
+        <div className="flex flex-col items-center order-3 md:order-none scale-[0.8] md:scale-100 origin-bottom md:origin-center shrink-0">
+          <div className="relative w-20 md:w-36 aspect-[3/5] bg-cyan-500/10 border-2 border-cyan-400/30 rounded-2xl p-1 shadow-lg">
+            <Card type={playerDeck[pIdx]?.id} />
+            <div className="absolute -top-2 -left-2 bg-cyan-600 w-8 h-8 rounded-full border-2 border-white/20 flex items-center justify-center font-black text-xs shadow-xl">{playerDeck.length - pIdx}</div>
+          </div>
+          <h2 className="text-sm md:text-2xl font-black text-cyan-400 mt-2 uppercase italic tracking-tighter">You Pilot</h2>
+        </div>
+
+        {/* BATTLE CENTER */}
+        <div className="relative flex flex-col items-center justify-center order-2 md:order-none w-full h-28 md:h-full z-20">
+          <div className="absolute top-0 md:top-1/4 text-center w-full px-2 z-10">
             <h3 className={`text-xs md:text-2xl font-black italic mb-1 animate-pulse uppercase tracking-tight
               ${statusText.includes('VICTORY') ? 'text-cyan-400' : statusText.includes('DEFEAT') ? 'text-red-500' : 'text-yellow-500'}`}>
               {statusText}
             </h3>
           </div>
-          
-          <div className="z-10 bg-slate-900 border-2 border-cyan-500 px-5 py-1.5 md:px-6 md:py-2 rounded-full text-xl md:text-5xl font-black italic text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]">
-            VS
-          </div>
+          <div className="bg-slate-900 border border-cyan-500/50 px-5 py-1.5 rounded-full text-xl font-black italic text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)]">VS</div>
 
-          {/* Clash Animation Layer (คงเดิม) */}
           <AnimatePresence>
             {isFighting && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50 overflow-visible">
                 <div className="relative w-full h-full flex items-center justify-center">
-                  
-                  {/* --- Player Card --- */}
+                  {/* Player Card Animation (พุ่งจากซ้ายไปขวา) */}
                   <motion.div 
-                    initial={{ x: isMobile ? 0 : 300, y: isMobile ? 300 : 0, opacity: 0, scale: 0.5 }}
+                    initial={{ x: isMobile ? 0 : -300, y: isMobile ? 300 : 0, opacity: 0, scale: 0.5 }}
                     animate={{ 
-                        // ถ้าชนะ ให้เดินหน้าไปทับ (Overlap), ถ้าแพ้ ให้ถอยหรืออยู่ที่เดิม
-                        x: isMobile ? 0 : (lastResult === 'PLAYER' ? 20 : 60), 
+                        x: isMobile ? 0 : (lastResult === 'PLAYER' ? -20 : -60), 
                         y: isMobile ? (lastResult === 'PLAYER' ? 20 : 60) : 0, 
                         opacity: 1, 
                         scale: lastResult === 'PLAYER' ? 1.2 : 1.1,
-                        zIndex: lastResult === 'PLAYER' ? 100 : 10, // ตัวชนะอยู่บน
-                        filter: lastResult === 'PLAYER' ? "brightness(1.2) drop-shadow(0 0 20px #22d3ee)" : "brightness(1)"
+                        zIndex: lastResult === 'PLAYER' ? 100 : 10,
+                        filter: lastResult === 'PLAYER' ? "brightness(1.3) drop-shadow(0 0 15px #22d3ee)" : "brightness(1)"
                     }}
                     exit={
                         lastResult === 'BOT' 
-                        ? { opacity: 0, scale: 0.5, filter: "blur(15px) grayscale(1)", transition: { duration: 0.6 } } 
+                        ? { opacity: 0, scale: 0.5, filter: "blur(15px) grayscale(1)", transition: { duration: 0.8 } } 
                         : lastResult === 'DRAW'
-                        ? { opacity: 0, scale: 0.3, filter: "blur(10px)" }
-                        : { opacity: 0, scale: 1.5, filter: "blur(5px) brightness(2)", transition: { duration: 0.5 } }
+                        ? { opacity: 0, scale: 0.3, filter: "blur(10px)", transition: { duration: 0.5 } } 
+                        : { opacity: 0, x: isMobile ? 0 : -400, y: isMobile ? 400 : 0, scale: 1.5, filter: "brightness(2) blur(8px)", transition: { duration: 0.6 } } 
                     }
                     transition={{ duration: 0.4, type: "spring", damping: 15 }}
                     className="absolute w-24 md:w-40 aspect-[3/5] border-2 md:border-4 border-cyan-400 rounded-2xl bg-slate-900 shadow-2xl overflow-hidden"
@@ -189,29 +183,23 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
                     <Card type={playerDeck[pIdx]?.id} />
                   </motion.div>
 
-                  {/* VS Indicator - ให้หายไปเร็วขึ้นเมื่อมีการทับกัน */}
-                  {/* {!lastResult && (
-                    <motion.div exit={{ opacity: 0 }} className="z-20 text-white font-black italic text-xl md:text-4xl">VS</motion.div>
-                  )} */}
-
-                  {/* --- Bot Card --- */}
+                  {/* Bot Card Animation (พุ่งจากขวาไปซ้าย) */}
                   <motion.div 
-                    initial={{ x: isMobile ? 0 : -300, y: isMobile ? -300 : 0, opacity: 0, scale: 0.5 }}
+                    initial={{ x: isMobile ? 0 : 300, y: isMobile ? -300 : 0, opacity: 0, scale: 0.5 }}
                     animate={{ 
-                        // ถ้าชนะ ให้เดินหน้าไปทับ (Overlap)
-                        x: isMobile ? 0 : (lastResult === 'BOT' ? -20 : -60), 
+                        x: isMobile ? 0 : (lastResult === 'BOT' ? 20 : 60), 
                         y: isMobile ? (lastResult === 'BOT' ? -20 : -60) : 0, 
                         opacity: 1, 
                         scale: lastResult === 'BOT' ? 1.2 : 1.1,
-                        zIndex: lastResult === 'BOT' ? 100 : 10, // ตัวชนะอยู่บน
-                        filter: lastResult === 'BOT' ? "brightness(1.2) drop-shadow(0 0 20px #ef4444)" : "brightness(1)"
+                        zIndex: lastResult === 'BOT' ? 100 : 10,
+                        filter: lastResult === 'BOT' ? "brightness(1.3) drop-shadow(0 0 15px #ef4444)" : "brightness(1)"
                     }}
                     exit={
                         lastResult === 'PLAYER' 
-                        ? { opacity: 0, scale: 0.5, filter: "blur(15px) grayscale(1)", transition: { duration: 0.6 } } 
+                        ? { opacity: 0, scale: 0.5, filter: "blur(15px) grayscale(1)", transition: { duration: 0.8 } } 
                         : lastResult === 'DRAW'
-                        ? { opacity: 0, scale: 0.3, filter: "blur(10px)" }
-                        : { opacity: 0, scale: 1.5, filter: "blur(5px) brightness(2)", transition: { duration: 0.5 } }
+                        ? { opacity: 0, scale: 0.3, filter: "blur(10px)", transition: { duration: 0.5 } } 
+                        : { opacity: 0, x: isMobile ? 0 : 400, y: isMobile ? -400 : 0, scale: 1.5, filter: "brightness(2) blur(8px)", transition: { duration: 0.6 } } 
                     }
                     transition={{ duration: 0.4, type: "spring", damping: 15 }}
                     className="absolute w-24 md:w-40 aspect-[3/5] border-2 md:border-4 border-red-500 rounded-2xl bg-slate-900 shadow-2xl overflow-hidden"
@@ -224,23 +212,15 @@ export default function BattleArena({ playerDeck, onFinishGame, globalVolume = 0
           </AnimatePresence>
         </div>
 
-        {/* --- 🔵 PLAYER SIDE --- */}
-        <div className="flex flex-col items-center order-3 md:order-none scale-[0.85] md:scale-100 origin-bottom md:origin-center shrink-0">
-          
-          <div className="relative w-20 md:w-36 aspect-[3/5] bg-cyan-500/10 border-2 border-cyan-400/30 rounded-2xl p-1 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
-            <Card type={playerDeck[pIdx]?.id} />
-            
-            {/* 🏷️ Improved Player Deck Badge: ปรับให้ใหญ่และเด่นขึ้น */}
-            <div className="absolute -top-4 -left-2 md:-top-6 md:-left-4 z-30">
-              <div className="bg-cyan-600 text-white px-3 py-1 md:px-4 md:py-2 rounded-lg md:rounded-xl border-2 border-white/20 shadow-[0_4px_15px_rgba(8,145,178,0.6)] flex flex-col items-center min-w-[50px] md:min-w-[70px]">
-                <span className="text-[7px] md:text-[10px] font-black uppercase tracking-tighter opacity-80 leading-none mb-0.5">In Deck</span>
-                <span className="text-sm md:text-2xl font-black italic leading-none">{Math.max(0, playerDeck.length - pIdx)}</span>
-              </div>
-            </div>
+        {/* BOT SIDE (Right on PC, Top on Mobile) */}
+        <div className="flex flex-col items-center order-1 md:order-none scale-[0.8] md:scale-100 origin-top md:origin-center shrink-0">
+          <h2 className="text-sm md:text-2xl font-black text-red-500 mb-2 uppercase italic tracking-tighter">Cyber Bot</h2>
+          <div className="relative w-20 md:w-36 aspect-[3/5] bg-red-500/10 border-2 border-red-500/30 rounded-2xl p-1 shadow-lg">
+            <Card type={botDeck[bIdx]?.id || 'BACK'} isFlipped={!isFighting && !lastResult} />
+            <div className="absolute -bottom-2 -right-2 bg-red-600 w-8 h-8 rounded-full border-2 border-white/20 flex items-center justify-center font-black text-xs shadow-xl">{botDeck.length - bIdx}</div>
           </div>
-          
-          <h2 className="text-base md:text-2xl font-black text-cyan-400 mt-3 md:mt-4 uppercase italic tracking-tighter">You Pilot</h2>
         </div>
+
       </div>
     </div>
   );
